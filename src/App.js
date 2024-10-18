@@ -1,81 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
-import { FaQuoteRight } from 'react-icons/fa';
-import data from './data';
+import React, { useState, useEffect } from "react";
+import List from "./List";
+import Alert from "./Alert";
 
+const getLocalStorage = () => {
+  let list = localStorage.getItem("list");
+  if (list) {
+    return JSON.parse(list);
+  } else {
+    return []
+  }
+}
 function App() {
-  const [people, setPeople] = useState(data);
-  const [index, setIndex] = useState(0);
+  const [name, setName] = useState("");
+  const [list, setList] = useState([getLocalStorage()]);
+  const [isEditing, setEditing] = useState(false);
+  const [editID, setEditID] = useState(null);
+  const [alert, setAlert] = useState({ show: false, msg: "", type: "" });
 
-  // Функція для обробки наступного слайду
-  const nextSlide = () => {
-    setIndex((oldIndex) => {
-      let newIndex = oldIndex + 1;
-      if (newIndex > people.length - 1) {
-        newIndex = 0;
-      }
-      return newIndex;
-    });
+  const clearList = () => {
+    setList([]); // Очищуємо список
   };
 
-  // Функція для обробки попереднього слайду
-  const prevSlide = () => {
-    setIndex((oldIndex) => {
-      let newIndex = oldIndex - 1;
-      if (newIndex < 0) {
-        newIndex = people.length - 1;
-      }
-      return newIndex;
-    });
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name) {
+      showAlert(true, "danger", "please enter values");
+    } else if (name && isEditing) {
+      // Логіка для редагування
+    } else {
+      const newItem = {
+        id: new Date().getTime().toString(),
+        title: name,
+      };
+      setList([...list, newItem]);
+      setName("");
+      showAlert(true, "success", "item added to the list");
+    }
   };
 
-  // Автоматичне переключення слайдів кожні 2 секунди
+  const showAlert = (show = false, type = "", msg = "") => {
+    setAlert({ show, type, msg });
+
+    // Закриття повідомлення через 3 секунди
+    if (show) {
+      setTimeout(() => {
+        setAlert({ ...alert, show: false });
+      }, 3000);
+    }
+  };
+  const removeItem = (id) => {
+    setList(list.filter((task) => task.id !== id));
+    showAlert(true, "danger", "item removed")
+  }
+  const editItem = (id) => {
+    const specificItem = list.find((item) => item.id === id);
+    setEditing(true);
+    setEditID(id);
+    setName(specificItem.title);
+  }
+
   useEffect(() => {
-    let slider = setInterval(nextSlide, 2000);
-    return () => clearInterval(slider);
-  }, [index]);
+    localStorage.setItem("list", JSON.stringify(list));
+  }, [list])
 
   return (
-    <section className="section">
-      <div className="title">
-        <h2>
-          <span>reviews</span>
-        </h2>
-      </div>
-      <div className="section-center">
-        {people.map((person, personIndex) => {
-          const { id, image, name, title, quote } = person;
+    <section className="section-center">
+      <form className="grocery-form" onSubmit={handleSubmit}>
+        {alert.show && <Alert {...alert} />}
+        <h3>TODO list</h3>
+        <div className="form-control">
+          <input
+            type="text"
+            className="grocery"
+            placeholder="e.g. pass the exam"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <button type="submit" className="submit-btn">
+            {isEditing ? "edit" : "submit"}
+          </button>
+        </div>
+      </form>
+      {list.length > 0 && (
+        <div className="grocery-container">
+          <List items={list} removeItem={removeItem} editItem={editItem} />
+          <button className="clear-btn" onClick={clearList}>clear items</button>
+        </div>
+      )}
 
-          let position = "nextSlide";
-          if (personIndex === index) {
-            position = "activeSlide";
-          }
-          if (
-            personIndex === index - 1 ||
-            (index === 0 && personIndex === people.length - 1)
-          ) {
-            position = "lastSlide";
-          }
-
-          return (
-            <article key={id} className={position}>
-              <img src={image} alt={name} className="person-img" />
-              <h4>{name}</h4>
-              <p className="title">{title}</p>
-              <p className="text">{quote}</p>
-              <FaQuoteRight className="icon" />
-            </article>
-          );
-        })}
-        <button className="prev" onClick={prevSlide}>
-          <FiChevronLeft />
-        </button>
-        <button className="next" onClick={nextSlide}>
-          <FiChevronRight />
-        </button>
-      </div>
     </section>
-  );
+  )
 }
 
 export default App;
